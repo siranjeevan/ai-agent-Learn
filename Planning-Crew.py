@@ -1,0 +1,73 @@
+# python Planning-Crew.py
+import os
+from dotenv import load_dotenv
+import google.generativeai as genai
+from crewai import Agent, Task, Crew, Process
+
+# Load environment variables from .env file for security
+load_dotenv()
+
+# Configure Gemini API key
+genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
+
+# Minimal Gemini LLM wrapper to pass into your Agent (keeps interface light)
+class GeminiLLM:
+    def __init__(self):
+        self.model = "gemini-2.5-flash"
+
+    def generate(self, prompt: str, **kwargs):
+        # Use the chat endpoint with a single user message
+        resp = genai.chat.create(model=self.model, messages=[{"role": "user", "content": prompt}])
+        return resp
+
+# 1. Explicitly define the language model for clarity (Gemini wrapper)
+llm = GeminiLLM()
+
+# 2. Define a clear and focused agent
+planner_writer_agent = Agent(
+    role='Article Planner and Writer',
+    goal="""Plan and then write a concise, engaging summary on a
+specified topic.""",
+    backstory=(
+        """You are an expert technical writer and content
+strategist. Your strength lies in creating a clear, actionable plan
+before writing, ensuring the final summary is both informative and easy
+to digest."""
+    ),
+    verbose=True,
+    allow_delegation=False,
+    llm=llm  # Assign the Gemini wrapper LLM to the agent
+)
+
+# 3. Define a task with a more structured and specific expected output
+topic = "The importance of Reinforcement Learning in AI"
+high_level_task = Task(
+    description=(
+        f"""1. Create a bullet-point plan for a summary on the
+topic: '{topic}'.
+2. Write the summary based on your plan, keeping it around 200 words."""
+    ),
+    expected_output=(
+        """A final report containing two distinct sections:
+
+### Plan
+- A bulleted list outlining the main points of the summary.
+
+### Summary
+- A concise and well-structured summary of the topic."""
+    ),
+    agent=planner_writer_agent,
+)
+
+# Create the crew with a clear process
+crew = Crew(
+    agents=[planner_writer_agent],
+    tasks=[high_level_task],
+    process=Process.sequential,
+)
+
+# Execute the task
+print("## Running the planning and writing task ##")
+result = crew.kickoff()
+print("\n\n---\n## Task Result ##\n---")
+print(result)
