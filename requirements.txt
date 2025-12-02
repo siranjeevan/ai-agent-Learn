@@ -1,0 +1,6 @@
+langchain==0.2.16
+langchain-core==0.2.38
+langchain-google-genai==1.0.10
+pydantic==2.8.2
+python-dotenv==1.0.1
+nest-asyncio==1.6.0
