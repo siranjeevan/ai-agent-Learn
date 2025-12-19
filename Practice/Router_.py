@@ -90,25 +90,22 @@ def main():
         print("\nSkipping execution due to LLM initialization failure.")
         return
 
-    print("--- Running with a Cancel Order Request ---")
-    request_a = "Cancel my order"
-    result_a = route_request(request_a)
-    print(f"Final Result A: {result_a}")
-
-    print("\n--- Running with a Change Delivery Address Request ---")
-    request_b = "Change my delivery address"
-    result_b = route_request(request_b)
-    print(f"Final Result B: {result_b}")
-
-    print("\n--- Running with a Track Order Request ---")
-    request_c = "Where is my order?"
-    result_c = route_request(request_c)
-    print(f"Final Result C: {result_c}")
-
-    print("\n--- Running with an Unclear Request ---")
-    request_d = "Tell me about your products"
-    result_d = route_request(request_d)
-    print(f"Final Result D: {result_d}")
+    print("=== E-Commerce Order Router ===")
+    print("Enter your order requests (type 'quit' to exit):\n")
+    
+    while True:
+        user_input = input("Your request: ").strip()
+        
+        if user_input.lower() in ['quit', 'exit', 'q']:
+            print("Goodbye!")
+            break
+            
+        if not user_input:
+            print("Please enter a request.\n")
+            continue
+            
+        result = route_request(user_input)
+        print(f"Response: {result}\n")
 
 
 if __name__ == "__main__":

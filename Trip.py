@@ -1,118 +1,105 @@
 import os
-import asyncio
-from typing import Optional
+import google.generativeai as genai
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import Runnable, RunnableParallel, RunnablePassthrough
 
 load_dotenv()
 
-# --- Configuration ---
-DESTINATION = "Antarctica"  # Change this variable to plan for different destinations
-
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 try:
-    llm: Optional[ChatOpenAI] = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    print("Language model initialized: gemini-2.5-flash")
+    llm_available = True
 except Exception as e:
     print(f"Error initializing language model: {e}")
-    llm = None
-
-# Optional: Add retry logic for rate limits
-import time
-from tenacity import retry, stop_after_attempt, wait_exponential
-
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-async def invoke_with_retry(chain, input_data):
-    return await chain.ainvoke(input_data)
+    model = None
+    llm_available = False
 
 
-weather_chain: Runnable = (
-    ChatPromptTemplate.from_messages(
-        [
-            ("system", f"Analyze the weather in {DESTINATION} and tell me clearly in one or two lines whether it is a good time to travel or not. No extra details."),
-            ("user", f"Check weather and best time to travel to {DESTINATION}"),
-        ]
-    )
-    | llm
-    | StrOutputParser()
-)
+def get_weather_info(destination: str) -> str:
+    """Get weather and best time to travel information."""
+    prompt = f"Analyze the weather in {destination} and tell me clearly in one or two lines whether it is a good time to travel or not. No extra details."
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        return f"Error getting weather info: {e}"
 
-flights_chain: Runnable = (
-    ChatPromptTemplate.from_messages(
-        [
-            ("system", f"Give only the flight details from Tamil Nadu to {DESTINATION}: number of flights per day, departure times, arrival times, and total travel duration. No extra explanation."),
-            ("user", f"Find flights from Tamil Nadu to {DESTINATION}"),
-        ]
-    )
-    | llm
-    | StrOutputParser()
-)
+def get_flight_info(destination: str) -> str:
+    """Get flight information."""
+    prompt = f"Give only the flight details from Tamil Nadu to {destination}: number of flights per day, departure times, arrival times, and total travel duration. No extra explanation."
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        return f"Error getting flight info: {e}"
 
-hotels_chain: Runnable = (
-    ChatPromptTemplate.from_messages(
-        [
-            ("system", f"List only hostel names in {DESTINATION} with location and per-day price. No description. No extra text."),
-            ("user", f"Find hotels in {DESTINATION}"),
-        ]
-    )
-    | llm
-    | StrOutputParser()
-)
+def get_hotel_info(destination: str) -> str:
+    """Get hotel information."""
+    prompt = f"List only hostel names in {destination} with location and per-day price. No description. No extra text."
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        return f"Error getting hotel info: {e}"
 
-cost_chain: Runnable = (
-    ChatPromptTemplate.from_messages(
-        [
-            ("system", f"Estimate the total trip cost to {DESTINATION} including travel, stay, food, and local transport. Give only the final total range. No explanation."),
-            ("user", f"Estimate total trip cost to {DESTINATION}"),
-        ]
-    )
-    | llm
-    | StrOutputParser()
-)
+def get_cost_info(destination: str) -> str:
+    """Get cost estimation."""
+    prompt = f"Estimate the total trip cost to {destination} including travel, stay, food, and local transport. Give only the final total range. No explanation."
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        return f"Error getting cost info: {e}"
 
-# --- Build the Parallel Chain ---
-travel_chain = RunnableParallel(
-    {
-        "weather": weather_chain,
-        "flights": flights_chain,
-        "hotels": hotels_chain,
-        "cost": cost_chain,
-    }
-)
-
-# --- Run the Travel Agent ---
-async def run_travel_agent() -> None:
-    """
-    Asynchronously invokes the parallel travel recommendation chains
-    and prints the results.
-    """
-    if not llm:
+def run_travel_agent(destination: str) -> None:
+    """Generate travel recommendations for the given destination."""
+    if not llm_available:
         print("LLM not initialized. Cannot run travel agent.")
         return
 
-    print(f"\n--- Travel Recommendation Agent for {DESTINATION} ---")
-    try:
-        response = await invoke_with_retry(travel_chain, {})
-        print("\n" + "="*50)
-        print(f"TRAVEL RECOMMENDATION RESULTS FOR {DESTINATION.upper()}")
-        print("="*50)
-        print(f"\n🌤️  WEATHER & BEST TIME TO TRAVEL TO {DESTINATION.upper()}:")
-        print("-" * 40)
-        print(response['weather'])
-        print(f"\n✈️  FLIGHTS FROM TAMIL NADU TO {DESTINATION.upper()}:")
-        print("-" * 40)
-        print(response['flights'])
-        print(f"\n🏨  HOSTELS IN {DESTINATION.upper()}:")
-        print("-" * 40)
-        print(response['hotels'])
-        print(f"\n💰  ESTIMATED TOTAL TRIP COST TO {DESTINATION.upper()}:")
-        print("-" * 40)
-        print(response['cost'])
-        print("="*50)
-    except Exception as e:
-        print(f"\nAn error occurred: {e}")
+    print(f"\n--- Travel Recommendation Agent for {destination} ---")
+    print("\n" + "="*50)
+    print(f"TRAVEL RECOMMENDATION RESULTS FOR {destination.upper()}")
+    print("="*50)
+    
+    print(f"\n🌤️  WEATHER & BEST TIME TO TRAVEL TO {destination.upper()}:")
+    print("-" * 40)
+    print(get_weather_info(destination))
+    
+    print(f"\n✈️  FLIGHTS FROM TAMIL NADU TO {destination.upper()}:")
+    print("-" * 40)
+    print(get_flight_info(destination))
+    
+    print(f"\n🏨  HOSTELS IN {destination.upper()}:")
+    print("-" * 40)
+    print(get_hotel_info(destination))
+    
+    print(f"\n💰  ESTIMATED TOTAL TRIP COST TO {destination.upper()}:")
+    print("-" * 40)
+    print(get_cost_info(destination))
+    print("="*50)
 
+def main():
+    if not llm_available:
+        print("\nSkipping execution due to LLM initialization failure.")
+        return
+
+    print("=== Travel Recommendation Agent ===")
+    print("Enter destinations to get travel recommendations (type 'quit' to exit):\n")
+    
+    while True:
+        destination = input("Enter destination: ").strip()
+        
+        if destination.lower() in ['quit', 'exit', 'q']:
+            print("Safe travels!")
+            break
+            
+        if not destination:
+            print("Please enter a destination.\n")
+            continue
+            
+        run_travel_agent(destination)
+        print("\n")
 
 if __name__ == "__main__":
-    asyncio.run(run_travel_agent())
+    main()
