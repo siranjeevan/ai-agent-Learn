@@ -6,7 +6,8 @@ from google.adk.agents import LlmAgent, ParallelAgent, SequentialAgent
 from google.adk.tools import google_search
 
 # Set API key (you should set your own key)
-os.environ["GOOGLE_API_KEY"] = "AIzaSyCmPx0NJTx3ln61shGZuqTWqLkVXmeZDSk"
+# API key should be set in .env file
+# os.environ["GOOGLE_API_KEY"] = "YOUR_API_KEY" # Removed hardcoded key for security
 
 GEMINI_MODEL = "gemini-2.0-flash"
 DESTINATION = "tiruchirappalli"  # Change this for different destinations
